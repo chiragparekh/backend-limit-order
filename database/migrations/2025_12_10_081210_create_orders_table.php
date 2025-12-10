@@ -15,8 +15,8 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained();
             $table->string('symbol');
             $table->string('side');
-            $table->decimal('price');
-            $table->decimal('amount');
+            $table->decimal('price', 17, 8);
+            $table->decimal('amount', 17, 8);
             $table->unsignedTinyInteger('status');
             $table->timestamps();
         });

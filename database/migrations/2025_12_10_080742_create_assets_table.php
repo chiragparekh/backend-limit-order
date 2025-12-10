@@ -14,8 +14,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained();
             $table->string('symbol');
-            $table->decimal('amount');
-            $table->decimal('locked_amount');
+            $table->decimal('amount', 17, 8);
+            $table->decimal('locked_amount', 17, 8);
             $table->timestamps();
         });
     }
