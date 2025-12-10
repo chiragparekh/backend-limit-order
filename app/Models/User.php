@@ -83,6 +83,9 @@ class User extends Authenticatable
         ];
     }
 
+    /**
+     * @return HasMany<Asset, $this>
+     */
     public function assets(): HasMany
     {
         return $this->hasMany(Asset::class);
