@@ -158,7 +158,9 @@ test('symbol must be valid', function () {
 });
 
 test('symbol must be BTC or ETH', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create([
+        'balance' => Money::parse('$10000'),
+    ]);
 
     $response = $this->actingAs($user, 'sanctum')
         ->postJson('/api/orders', [
