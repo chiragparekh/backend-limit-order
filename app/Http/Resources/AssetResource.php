@@ -20,8 +20,8 @@ class AssetResource extends JsonResource
     {
         return [
             'symbol' => $this->symbol,
-            'amount' => $this->amount->formatByDecimal(),
-            'locked_amount' => $this->locked_amount->formatByDecimal(),
+            'amount' => $this->amount,
+            'locked_amount' => $this->locked_amount,
         ];
     }
 }

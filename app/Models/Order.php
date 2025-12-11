@@ -15,8 +15,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $user_id
  * @property string $symbol
  * @property OrderSide $side
- * @property numeric $price
- * @property numeric $amount
+ * @property string $price
+ * @property string $amount
  * @property OrderStatus $status
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
@@ -51,6 +51,8 @@ class Order extends Model
         return [
             'status' => OrderStatus::class,
             'side' => OrderSide::class,
+            'amount' => 'decimal:8',
+            'price' => 'decimal:8',
         ];
     }
 

@@ -85,15 +85,15 @@ test('profile returns user assets', function () {
     $btcAsset = collect($assets)->firstWhere('symbol', 'BTC');
     expect($btcAsset)->toMatchArray([
         'symbol' => 'BTC',
-        'amount' => '1.50',
-        'locked_amount' => '0.50',
+        'amount' => '1.50000000',
+        'locked_amount' => '0.50000000',
     ]);
 
     $ethAsset = collect($assets)->firstWhere('symbol', 'ETH');
     expect($ethAsset)->toMatchArray([
         'symbol' => 'ETH',
-        'amount' => '10.25',
-        'locked_amount' => '2.00',
+        'amount' => '10.25000000',
+        'locked_amount' => '2.00000000',
     ]);
 });
 
