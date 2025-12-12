@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Enums\OrderSide;
 use App\Enums\OrderStatus;
+use App\Events\OrderMatched;
 use App\Models\Asset;
 use App\Models\Order;
 use App\Models\User;
@@ -100,6 +101,9 @@ class MatchOrderJob implements ShouldQueue, ShouldQueueAfterCommit
             $this->updateUserAssets($buyer, $seller, $symbol, $amount);
             $this->updateUserBalance($buyer, $seller, $amount, $price);
             $this->markOrdersAsFilled($order, $counterOrder);
+
+            event(new OrderMatched($order));
+            event(new OrderMatched($counterOrder));
 
             DB::commit();
         } catch (\Throwable $e) {
