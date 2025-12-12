@@ -5,12 +5,343 @@ declare(strict_types=1);
 use App\Enums\OrderSide;
 use App\Enums\OrderStatus;
 use App\Models\Asset;
+use App\Models\Order;
 use App\Models\User;
 use Cknow\Money\Money;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
     Queue::fake();
+});
+
+test('unauthenticated user cannot get orders', function () {
+    $response = $this->getJson('/api/orders');
+
+    $response->assertStatus(401);
+});
+
+test('authenticated user can get all orders', function () {
+    $user = User::factory()->create();
+    $order1 = Order::factory()->create([
+        'user_id' => $user->id,
+        'symbol' => 'BTC',
+        'side' => OrderSide::BUY,
+        'status' => OrderStatus::OPEN,
+        'price' => '50000.00000000',
+        'amount' => '0.10000000',
+    ]);
+    $order2 = Order::factory()->create([
+        'user_id' => $user->id,
+        'symbol' => 'ETH',
+        'side' => OrderSide::SELL,
+        'status' => OrderStatus::FILLED,
+        'price' => '3000.00000000',
+        'amount' => '1.00000000',
+    ]);
+
+    $response = $this->actingAs($user, 'sanctum')
+        ->getJson('/api/orders');
+
+    $response->assertStatus(200)
+        ->assertJsonCount(2, 'data')
+        ->assertJsonStructure([
+            'data' => [
+                '*' => [
+                    'id',
+                    'symbol',
+                    'side',
+                    'price',
+                    'amount',
+                    'status',
+                    'created_at',
+                ],
+            ],
+        ]);
+
+    $data = $response->json('data');
+
+    expect($data)->toHaveCount(2);
+});
+
+test('authenticated user can filter orders by symbol', function () {
+    $user = User::factory()->create();
+    $btcOrder = Order::factory()->create([
+        'user_id' => $user->id,
+        'symbol' => 'BTC',
+        'status' => OrderStatus::OPEN,
+    ]);
+    Order::factory()->create([
+        'user_id' => $user->id,
+        'symbol' => 'ETH',
+        'status' => OrderStatus::OPEN,
+    ]);
+
+    $response = $this->actingAs($user, 'sanctum')
+        ->getJson('/api/orders?symbol=BTC');
+
+    $response->assertStatus(200)
+        ->assertJsonCount(1, 'data')
+        ->assertJson([
+            'data' => [
+                [
+                    'id' => $btcOrder->id,
+                    'symbol' => 'BTC',
+                ],
+            ],
+        ]);
+});
+
+test('authenticated user can filter orders by status', function () {
+    $user = User::factory()->create();
+    $openOrder = Order::factory()->create([
+        'user_id' => $user->id,
+        'status' => OrderStatus::OPEN,
+    ]);
+    $filledOrder = Order::factory()->create([
+        'user_id' => $user->id,
+        'status' => OrderStatus::FILLED,
+    ]);
+    Order::factory()->create([
+        'user_id' => $user->id,
+        'status' => OrderStatus::CANCELLED,
+    ]);
+
+    $response = $this->actingAs($user, 'sanctum')
+        ->getJson('/api/orders?status=1');
+
+    $response->assertStatus(200)
+        ->assertJsonCount(1, 'data')
+        ->assertJson([
+            'data' => [
+                [
+                    'id' => $openOrder->id,
+                    'status' => OrderStatus::OPEN->value,
+                ],
+            ],
+        ]);
+
+    $response = $this->actingAs($user, 'sanctum')
+        ->getJson('/api/orders?status=2');
+
+    $response->assertStatus(200)
+        ->assertJsonCount(1, 'data')
+        ->assertJson([
+            'data' => [
+                [
+                    'id' => $filledOrder->id,
+                    'status' => OrderStatus::FILLED->value,
+                ],
+            ],
+        ]);
+});
+
+test('authenticated user can filter orders by side', function () {
+    $user = User::factory()->create();
+    $buyOrder = Order::factory()->create([
+        'user_id' => $user->id,
+        'side' => OrderSide::BUY,
+        'status' => OrderStatus::OPEN,
+    ]);
+    Order::factory()->create([
+        'user_id' => $user->id,
+        'side' => OrderSide::SELL,
+        'status' => OrderStatus::OPEN,
+    ]);
+
+    $response = $this->actingAs($user, 'sanctum')
+        ->getJson('/api/orders?side=buy');
+
+    $response->assertStatus(200)
+        ->assertJsonCount(1, 'data')
+        ->assertJson([
+            'data' => [
+                [
+                    'id' => $buyOrder->id,
+                    'side' => OrderSide::BUY->value,
+                ],
+            ],
+        ]);
+
+    $response = $this->actingAs($user, 'sanctum')
+        ->getJson('/api/orders?side=sell');
+
+    $response->assertStatus(200)
+        ->assertJsonCount(1, 'data')
+        ->assertJson([
+            'data' => [
+                [
+                    'side' => OrderSide::SELL->value,
+                ],
+            ],
+        ]);
+});
+
+test('authenticated user can combine filters', function () {
+    $user = User::factory()->create();
+    $matchingOrder = Order::factory()->create([
+        'user_id' => $user->id,
+        'symbol' => 'BTC',
+        'side' => OrderSide::BUY,
+        'status' => OrderStatus::OPEN,
+    ]);
+    Order::factory()->create([
+        'user_id' => $user->id,
+        'symbol' => 'BTC',
+        'side' => OrderSide::SELL,
+        'status' => OrderStatus::OPEN,
+    ]);
+    Order::factory()->create([
+        'user_id' => $user->id,
+        'symbol' => 'ETH',
+        'side' => OrderSide::BUY,
+        'status' => OrderStatus::OPEN,
+    ]);
+    Order::factory()->create([
+        'user_id' => $user->id,
+        'symbol' => 'BTC',
+        'side' => OrderSide::BUY,
+        'status' => OrderStatus::FILLED,
+    ]);
+
+    $response = $this->actingAs($user, 'sanctum')
+        ->getJson('/api/orders?symbol=BTC&side=buy&status=1');
+
+    $response->assertStatus(200)
+        ->assertJsonCount(1, 'data')
+        ->assertJson([
+            'data' => [
+                [
+                    'id' => $matchingOrder->id,
+                    'symbol' => 'BTC',
+                    'side' => OrderSide::BUY->value,
+                    'status' => OrderStatus::OPEN->value,
+                ],
+            ],
+        ]);
+});
+
+test('index returns orders ordered by price then created_at', function () {
+    $user = User::factory()->create();
+    $order1 = Order::factory()->create([
+        'user_id' => $user->id,
+        'symbol' => 'BTC',
+        'status' => OrderStatus::OPEN,
+        'price' => '50000.00000000',
+        'created_at' => now()->subMinutes(2),
+    ]);
+    $order2 = Order::factory()->create([
+        'user_id' => $user->id,
+        'symbol' => 'BTC',
+        'status' => OrderStatus::OPEN,
+        'price' => '50000.00000000',
+        'created_at' => now()->subMinutes(1),
+    ]);
+    $order3 = Order::factory()->create([
+        'user_id' => $user->id,
+        'symbol' => 'BTC',
+        'status' => OrderStatus::OPEN,
+        'price' => '51000.00000000',
+        'created_at' => now(),
+    ]);
+
+    $response = $this->actingAs($user, 'sanctum')
+        ->getJson('/api/orders?symbol=BTC&status=1');
+
+    $response->assertStatus(200)
+        ->assertJsonCount(3, 'data');
+
+    $data = $response->json('data');
+    expect($data[0]['id'])->toBe($order1->id)
+        ->and($data[1]['id'])->toBe($order2->id)
+        ->and($data[2]['id'])->toBe($order3->id);
+});
+
+test('index returns empty array when no orders match', function () {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user, 'sanctum')
+        ->getJson('/api/orders');
+
+    $response->assertStatus(200)
+        ->assertJsonCount(0, 'data')
+        ->assertJson(['data' => []]);
+});
+
+test('index returns empty array when no orders match symbol filter', function () {
+    $user = User::factory()->create();
+    Order::factory()->create([
+        'user_id' => $user->id,
+        'symbol' => 'BTC',
+        'status' => OrderStatus::OPEN,
+    ]);
+
+    $response = $this->actingAs($user, 'sanctum')
+        ->getJson('/api/orders?symbol=ETH');
+
+    $response->assertStatus(200)
+        ->assertJsonCount(0, 'data')
+        ->assertJson(['data' => []]);
+});
+
+test('index returns empty array when no orders match status filter', function () {
+    $user = User::factory()->create();
+    Order::factory()->create([
+        'user_id' => $user->id,
+        'status' => OrderStatus::OPEN,
+    ]);
+
+    $response = $this->actingAs($user, 'sanctum')
+        ->getJson('/api/orders?status=2');
+
+    $response->assertStatus(200)
+        ->assertJsonCount(0, 'data')
+        ->assertJson(['data' => []]);
+});
+
+test('index returns empty array when no orders match side filter', function () {
+    $user = User::factory()->create();
+    Order::factory()->create([
+        'user_id' => $user->id,
+        'side' => OrderSide::BUY,
+        'status' => OrderStatus::OPEN,
+    ]);
+
+    $response = $this->actingAs($user, 'sanctum')
+        ->getJson('/api/orders?side=sell');
+
+    $response->assertStatus(200)
+        ->assertJsonCount(0, 'data')
+        ->assertJson(['data' => []]);
+});
+
+test('index response structure matches OrderResource', function () {
+    $user = User::factory()->create();
+    $order = Order::factory()->create([
+        'user_id' => $user->id,
+        'symbol' => 'BTC',
+        'side' => OrderSide::BUY,
+        'status' => OrderStatus::OPEN,
+        'price' => '50000.00000000',
+        'amount' => '0.10000000',
+    ]);
+
+    $response = $this->actingAs($user, 'sanctum')
+        ->getJson('/api/orders');
+
+    $response->assertStatus(200)
+        ->assertJson([
+            'data' => [
+                [
+                    'id' => $order->id,
+                    'symbol' => 'BTC',
+                    'side' => OrderSide::BUY->value,
+                    'price' => '50000.00000000',
+                    'amount' => '0.10000000',
+                    'status' => OrderStatus::OPEN->value,
+                    'created_at' => $order->created_at->toIso8601String(),
+                ],
+            ],
+        ]);
 });
 
 test('unauthenticated user cannot create order', function () {
