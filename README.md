@@ -63,3 +63,5 @@ Password: password
 Email: user2@test.com
 Password: password
 ``` 
+
+### For the frontend follow steps in this repository: https://github.com/chiragparekh/frontend-limit-order
