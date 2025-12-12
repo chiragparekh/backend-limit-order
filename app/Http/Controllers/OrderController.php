@@ -23,8 +23,9 @@ class OrderController extends Controller
         $symbol = $request->has('symbol') ? $request->string('symbol')->toString() : null;
         $status = $request->has('status') ? $request->enum('status', OrderStatus::class) : null;
         $side = $request->has('side') ? $request->enum('side', OrderSide::class) : null;
+        $userId = $request->has('user_id') ? $request->integer('user_id') : null;
 
-        $orders = $query->handle($symbol, $status, $side)
+        $orders = $query->handle($userId, $symbol, $status, $side)
             ->get();
 
         return OrderResource::collection($orders);

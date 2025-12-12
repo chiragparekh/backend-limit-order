@@ -20,8 +20,15 @@ test('authenticated user can view their profile', function () {
     $response->assertStatus(200)
         ->assertJsonStructure([
             'data' => [
+                'id',
                 'balance',
-                'assets',
+                'assets' => [
+                    '*' => [
+                        'symbol',
+                        'amount',
+                        'locked_amount',
+                    ],
+                ],
             ],
         ]);
 });

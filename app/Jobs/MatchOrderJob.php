@@ -59,6 +59,7 @@ class MatchOrderJob implements ShouldQueue, ShouldQueueAfterCommit
 
             if (blank($counterOrder)) {
                 Log::info('MatchOrderJob: Order #'.$this->orderId.' not found');
+                DB::rollBack();
 
                 return;
             }
@@ -68,23 +69,30 @@ class MatchOrderJob implements ShouldQueue, ShouldQueueAfterCommit
             $amount = $order->amount;
             $price = $counterOrder->price;
 
-            $buyer = User::query()
-                ->where('id', $buyerId)
-                ->lockForUpdate()
-                ->first();
+            // Lock users in consistent order (by ID) to prevent deadlocks
+            $userIds = [$buyerId, $sellerId];
+            sort($userIds);
 
+            $users = User::query()
+                ->whereIn('id', $userIds)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+
+            $buyer = $users->get($buyerId);
             if (blank($buyer)) {
                 Log::error('MatchOrderJob: Order #'.$this->orderId.': Buyer not found');
+                DB::rollBack();
 
                 return;
             }
-            $seller = User::query()
-                ->where('id', $sellerId)
-                ->lockForUpdate()
-                ->first();
+
+            $seller = $users->get($sellerId);
 
             if (blank($seller)) {
                 Log::error('MatchOrderJob: Order #'.$this->orderId.': Seller not found');
+                DB::rollBack();
 
                 return;
             }

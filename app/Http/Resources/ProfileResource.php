@@ -21,6 +21,7 @@ class ProfileResource extends JsonResource
         $this->loadMissing('assets');
 
         return [
+            'id' => $this->id,
             'balance' => $this->balance->formatByDecimal(),
             'assets' => AssetResource::collection($this->assets),
         ];

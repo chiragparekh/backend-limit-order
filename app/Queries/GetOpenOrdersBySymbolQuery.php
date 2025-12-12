@@ -12,12 +12,16 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 
 class GetOpenOrdersBySymbolQuery
 {
-    public function handle(?string $symbol = null, ?OrderStatus $status = null, ?OrderSide $side = null): Builder|QueryBuilder
+    /**
+     * @return Builder<Order>|QueryBuilder
+     */
+    public function handle(?int $userId = null, ?string $symbol = null, ?OrderStatus $status = null, ?OrderSide $side = null): Builder|QueryBuilder
     {
         return Order::query()
-            ->when(! blank($status), fn (Builder|QueryBuilder $query) => $query->where('status', $status))
-            ->when(! blank($symbol), fn (Builder|QueryBuilder $query) => $query->where('symbol', $symbol))
-            ->when(! blank($side), fn (Builder|QueryBuilder $query) => $query->where('side', $side))
+            ->when($userId !== null, fn (Builder $query) => $query->where('user_id', $userId))
+            ->when(! blank($status), fn (Builder $query) => $query->where('status', $status))
+            ->when(! blank($symbol), fn (Builder $query) => $query->where('symbol', $symbol))
+            ->when(! blank($side), fn (Builder $query) => $query->where('side', $side))
             ->orderBy('price')
             ->orderBy('created_at');
     }
